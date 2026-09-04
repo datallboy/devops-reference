@@ -1,0 +1,3 @@
+lab_network_name = "labops"
+lab_domain       = "lab.test"
+lab_cidr         = "192.168.77.0/24"
