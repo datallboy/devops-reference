@@ -1,3 +1,8 @@
 lab_network_name = "labops"
 lab_domain       = "lab.test"
 lab_cidr         = "192.168.77.0/24"
+
+storage_pool_name        = "labops"
+lab_storage_pool_path = "/mnt/vm-store/labops"
+
+ssh_public_key_path = "~/.ssh/id_ed25519.pub"

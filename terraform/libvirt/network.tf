@@ -2,6 +2,10 @@ resource "libvirt_network" "labops" {
   name      = var.lab_network_name
   autostart = true
 
+  bridge = {
+    name = var.lab_bridge_name
+  }
+
   forward = {
     mode = "nat"
   }
