@@ -68,18 +68,6 @@ resource "libvirt_cloudinit_disk" "init" {
 
     ssh_pwauth   = false
     disable_root = true
-
-    packages = [
-      "openssh-server"
-    ]
-
-    runcmd = [
-      [
-        "sh",
-        "-c",
-        "systemctl enable --now sshd || systemctl enable --now ssh"
-      ]
-    ]
   })}"
 
   network_config = yamlencode({
