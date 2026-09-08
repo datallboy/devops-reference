@@ -1,0 +1,98 @@
+---
+- name: Check Linux host health
+  hosts: lab_linux
+  gather_facts: true
+  become: false
+
+  vars:
+    health_disk_critical_pct: 95
+
+  tasks:
+    - name: Get root filesystem information
+      ansible.builtin.set_fact:
+        health_root_mount: >-
+          {{
+            ansible_facts.mounts
+            | selectattr('mount', 'equalto', '/')
+            | first
+          }}
+        changed_when: false
+
+    - name: Calculate root filesystem usage
+      ansible.builtin.set_fact:
+        health_root_used_pct: >-
+          {{
+            (
+              (
+                health_root_mount.size_total
+                  - health_root_mount.size_available
+              )
+              / health_root_mount.size_total
+              * 100
+            )
+            | round(1)
+          }}
+        changed_when: false
+
+    - name: Check for failed systemd units
+      ansible.builtin.command:
+        argv:
+          - systemctl
+          - --failed
+          - --no-legend
+          - --no-pager
+      register: health_failed_units
+      changed_when: false
+
+    - name: Check Debian reboot-required flag
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: health_debian_reboot_required
+      when: ansible_facts.os_family == "Debian"
+
+    - name: Display host health
+      ansible.builtin.debug:
+        msg:
+          - "Host: {{ inventory_hostname }}"
+          - "OS: {{ ansible_facts.distribution }} {{ ansible_facts.distribution_version }}"
+          - "Kernel: {{ ansible_facts.kernel }}"
+          - "Uptime: {{ (ansible_facts.uptime_seconds / 86400) | round(1) }} days"
+          - "Load: {{ ansible_facts.loadavg['1m'] }} / {{ ansible_facts.loadavg['5m'] }} / {{ ansible_facts.loadavg['15m'] }}"
+          - "Memory: {{ ansible_facts.memfree_mb }} MB free / {{ ansible_facts.memtotal_mb }} MB total"
+          - "Root filesystem: {{ health_root_used_pct }}% used"
+          - >-
+            Failed systemd units:
+            {{
+              health_failed_units.stdout_lines
+              | length
+            }}
+          - >-
+            Reboot required:
+            {{
+              health_debian_reboot_required.stat.exists
+              if ansible_facts.os_family == "Debian"
+              else "not checked"
+            }}
+
+    - name: Report failed systemd units
+      ansible.builtin.debug:
+        var: health_failed_units.stdout_lines
+      when: health_failed_units.stdout_lines | length > 0
+
+    - name: Fail if root filesystem usage is critical
+      ansible.builtin.assert:
+        that:
+          - health_root_used_pct | float < health_disk_critical_pct
+        fail_msg: >-
+          Root filesystem usage is {{ health_root_used_pct }}%,
+          exceeding the {{ health_disk_critical_pct }}% critical threshold.
+        quiet: true
+
+    - name: Fail if systemd has failed units
+      ansible.builtin.assert:
+        that:
+          - health_failed_units.stdout_lines | length == 0
+        fail_msg: >-
+          Failed systemd unit(s):
+          {{ health_failed_units.stdout_lines | join('; ') }}
+        quiet: true
