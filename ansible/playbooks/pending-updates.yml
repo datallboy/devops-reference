@@ -1,0 +1,82 @@
+---
+- name: Check for pending Linux updates
+  hosts: lab_linux
+  gather_facts: true
+  become: false
+
+  tasks:
+    # -------------------------------------------------------------------------
+    # Debian / Ubuntu
+    # -------------------------------------------------------------------------
+    - name: Refresh APT package metadata
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+      become: true
+      changed_when: false
+      when: ansible_facts.os_family == "Debian"
+
+    - name: Simulate Debian package upgrade
+      ansible.builtin.command:
+        argv:
+          - apt-get
+          - -s
+          - -o
+          - Debug::NoLocking=true
+          - dist-upgrade
+      register: debian_upgrade_check
+      changed_when: false
+      when: ansible_facts.os_family == "Debian"
+
+    - name: Build Debian pending update list
+      ansible.builtin.set_fact:
+        pending_updates: >-
+          {{
+            debian_upgrade_check.stdout_lines
+            | select('match', '^Inst ')
+            | list
+          }}
+      when: ansible_facts.os_family == "Debian"
+
+    # -------------------------------------------------------------------------
+    # Red Hat / Rocky
+    # -------------------------------------------------------------------------
+
+    - name: Check Rocky package updates
+      ansible.builtin.command:
+        argv:
+          - dnf
+          - -q
+          - --refresh
+          - check-update
+      become: true
+      register: rocky_upgrade_check
+      changed_when: false
+      failed_when: rocky_upgrade_check.rc not in [0, 100]
+      when: ansible_facts.os_family == "RedHat"
+
+    - name: Build Rocky pending update list
+      ansible.builtin.set_fact:
+        pending_updates: >-
+          {{
+            rocky_upgrade_check.stdout_lines
+            | reject('equalto', '')
+            | list
+          }}
+      when: ansible_facts.os_family == "RedHat"
+
+    # -------------------------------------------------------------------------
+    # Report
+    # -------------------------------------------------------------------------
+
+    - name: Display update summary
+      ansible.builtin.debug:
+        msg:
+          - "Host: {{ inventory_hostname }}"
+          - "OS: {{ ansible_facts.distribution }} {{ ansible_facts.distribution_version }}"
+          - "Pending updates: {{ pending_updates | length }}"
+
+    - name: Display pending packages
+      ansible.builtin.debug:
+        var: pending_updates
+      when: pending_updates | length > 0
