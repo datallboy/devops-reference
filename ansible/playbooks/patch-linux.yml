@@ -1,0 +1,103 @@
+---
+- name: Patch Linux hosts
+  hosts: lab_linux
+  gather_facts: true
+  become: true
+
+  tasks:
+    - name: Verify supported operating system
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.os_family in ["Debian", "RedHat"]
+        fail_msg: >-
+          Unsupported operating system family:
+          {{ ansible_facts.os_family }}
+
+    # -------------------------------------------------------------------------
+    # Debian
+    # -------------------------------------------------------------------------
+
+    - name: Patch Debian packages
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+        upgrade: safe
+      register: debian_patch
+      when: ansible_facts.os_family == "Debian"
+
+    - name: Check whether Debian requires a reboot
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: debian_reboot_required
+      when: ansible_facts.os_family == "Debian"
+
+    # -------------------------------------------------------------------------
+    # Red Hat / Rocky
+    # -------------------------------------------------------------------------
+
+    - name: Patch Rocky packages
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+        update_only: true
+        update_cache: true
+      register: rocky_patch
+      when: ansible_facts.os_family == "RedHat"
+
+    - name: Get newest installed Rocky kernel
+      ansible.builtin.shell: |
+        set -o pipefail
+        rpm -q --last kernel-core \
+          | head -n 1 \
+          | awk '{print $1}' \
+          | sed 's/^kernel-core-//'
+      args:
+        executable: /bin/bash
+      register: rocky_latest_kernel
+      changed_when: false
+      when: ansible_facts.os_family == "RedHat"
+
+    - name: Determine Rocky reboot requirement
+      ansible.builtin.set_fact:
+        rocky_reboot_required: >-
+          {{
+            rocky_latest_kernel.stdout | trim
+            != ansible_facts.kernel
+          }}
+      when: ansible_facts.os_family == "RedHat"
+
+    # -------------------------------------------------------------------------
+    # Results
+    # -------------------------------------------------------------------------
+
+    - name: Set patch result
+      ansible.builtin.set_fact:
+        patch_changed: >-
+          {{
+            debian_patch.changed
+            if ansible_facts.os_family == "Debian"
+            else rocky_patch.changed
+          }}
+
+        reboot_required: >-
+          {{
+            debian_reboot_required.stat.exists
+            if ansible_facts.os_family == "Debian"
+            else rocky_reboot_required
+          }}
+
+    - name: Display patch summary
+      ansible.builtin.debug:
+        msg:
+          - "Host: {{ inventory_hostname }}"
+          - "OS: {{ ansible_facts.distribution }} {{ ansible_facts.distribution_version }}"
+          - "Packages changed: {{ patch_changed }}"
+          - "Running kernel: {{ ansible_facts.kernel }}"
+          - "Reboot required: {{ reboot_required }}"
+
+    - name: Display Rocky package transaction
+      ansible.builtin.debug:
+        var: rocky_patch.results
+      when:
+        - ansible_facts.os_family == "RedHat"
+        - rocky_patch.changed

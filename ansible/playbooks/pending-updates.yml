@@ -23,7 +23,7 @@
           - -s
           - -o
           - Debug::NoLocking=true
-          - dist-upgrade
+          - upgrade
       register: debian_upgrade_check
       changed_when: false
       when: ansible_facts.os_family == "Debian"
