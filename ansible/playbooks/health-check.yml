@@ -16,7 +16,6 @@
             | selectattr('mount', 'equalto', '/')
             | first
           }}
-        changed_when: false
 
     - name: Calculate root filesystem usage
       ansible.builtin.set_fact:
@@ -32,7 +31,6 @@
             )
             | round(1)
           }}
-        changed_when: false
 
     - name: Check for failed systemd units
       ansible.builtin.command:
