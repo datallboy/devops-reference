@@ -6,6 +6,10 @@ resource "libvirt_network" "labops" {
     name = var.lab_bridge_name
   }
 
+  mtu = {
+    size = var.lab_mtu
+  }
+
   forward = {
     mode = "nat"
   }

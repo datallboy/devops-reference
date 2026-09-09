@@ -22,6 +22,17 @@ variable "lab_cidr" {
   default     = "192.168.77.0/24"
 }
 
+variable "lab_mtu" {
+  description = "MTU for the libvirt lab network. Set tfvars to 1420 if the host has a Wireguard tunnel connected."
+  type        = number
+  default     = 1500
+
+  validation {
+    condition     = var.lab_mtu >= 1280 && var.lab_mtu <= 9000
+    error_message = "lab_mtu must be between 1280 and 9000."
+  }
+}
+
 variable "lab_storage_pool_name" {
   description = "Libvirt storage pool used for lab VM volumes"
   type        = string
