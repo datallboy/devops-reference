@@ -1,0 +1,27 @@
+---
+- name: Render Alloy configuration
+  ansible.builtin.set_fact:
+    alloy_rendered_config: >-
+      {{ lookup('ansible.builtin.template', 'alloy-config.alloy.j2') }}
+
+- name: Install and configure Grafana Alloy
+  ansible.builtin.include_role:
+    name: grafana.grafana.alloy
+  vars:
+    alloy_version: "{{ lab_alloy_package_version }}"
+
+    alloy_user_groups:
+      - systemd-journal
+
+    alloy_env_file_vars:
+      LOKI_URL: "{{ lab_alloy_loki_url }}"
+
+    alloy_config: "{{ alloy_rendered_config }}"
+
+- name: Validate Alloy configuration
+  ansible.builtin.command:
+    argv:
+      - alloy
+      - validate
+      - /etc/alloy/config.alloy
+  changed_when: false

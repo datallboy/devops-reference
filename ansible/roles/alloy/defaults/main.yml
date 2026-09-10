@@ -1,0 +1,8 @@
+---
+lab_alloy_package_version: "1.19.2"
+lab_alloy_journal_max_age: "24h"
+
+# In this libvirt NAT design, the VM's default gateway is the host
+# where Loki is listening.
+lab_alloy_loki_url: >-
+  http://{{ ansible_facts.default_ipv4.gateway }}:3100/loki/api/v1/push

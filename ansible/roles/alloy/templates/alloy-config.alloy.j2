@@ -1,0 +1,35 @@
+loki.relabel "journal" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    target_label  = "level"
+  }
+
+  rule {
+    source_labels = ["__journal_syslog_identifier"]
+    target_label  = "syslog_identifier"
+  }
+}
+
+loki.source.journal "system" {
+  forward_to    = [loki.write.local.receiver]
+  relabel_rules = loki.relabel.journal.rules
+  max_age       = "{{ lab_alloy_journal_max_age }}"
+
+  labels = {
+    host        = constants.hostname,
+    environment = "lab",
+  }
+}
+
+loki.write "local" {
+  endpoint {
+    url = sys.env("LOKI_URL")
+  }
+}
