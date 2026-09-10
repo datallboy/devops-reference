@@ -1,9 +1,9 @@
 
-# Labops
-A purpose-driven infrastructure and agentic-operations lab.
+# devops-reference
+A purpose-driven infrastructure and agentic-operations lab
 ---
 
-labsops is a reproducible miniature platform for experimenting with:
+devops-reference is a reproducible miniature platform for experimenting with:
 
 - infastructure provisioning
 - configuration management
