@@ -1,0 +1,47 @@
+services:
+  semaphore:
+    image: docker.io/semaphoreui/semaphore:v2.19.12
+    container_name: lab-semaphore
+    restart: unless-stopped
+
+    network_mode: host
+
+    dns:
+      - "${LAB_DNS}"
+
+    dns_search:
+      - "${LAB_DOMAIN}"
+
+    environment:
+      SEMAPHORE_INTERFACE: "${SEMAPHORE_BIND_IP:-127.0.0.1}"
+      SEMAPHORE_PORT: "${SEMAPHORE_PORT:-3001}"
+
+      SEMAPHORE_DB_DIALECT: sqlite
+      SEMAPHORE_DB: /var/lib/semaphore/semaphore.sqlite
+
+      SEMAPHORE_ADMIN: "${SEMAPHORE_ADMIN}"
+      SEMAPHORE_ADMIN_NAME: "${SEMAPHORE_ADMIN_NAME}"
+      SEMAPHORE_ADMIN_EMAIL: "${SEMAPHORE_ADMIN_EMAIL}"
+
+      SEMAPHORE_ADMIN_PASSWORD_FILE: /run/secrets/admin_password
+      SEMAPHORE_ACCESS_KEY_ENCRYPTION_FILE: /run/secrets/access_key_encryption
+
+      SEMAPHORE_PLAYBOOK_PATH: /tmp/semaphore
+      TZ: America/New_York
+
+    volumes:
+      - semaphore-data:/var/lib/semaphore
+
+    secrets:
+      - admin_password
+      - access_key_encryption
+
+secrets:
+  admin_password:
+    file: ./secrets/admin_password
+
+  access_key_encryption:
+    file: ./secrets/access_key_encryption
+
+volumes:
+  semaphore-data:

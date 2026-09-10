@@ -33,6 +33,7 @@ id_ed25519
 # Environment files
 .env
 .env.*
+!.env.example
 
 # Editors
 .vscode/
@@ -42,3 +43,6 @@ id_ed25519
 
 # OS
 .DS_Store
+
+# Secrets folders
+**/secrets
