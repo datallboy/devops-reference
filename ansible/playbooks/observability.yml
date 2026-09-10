@@ -1,0 +1,8 @@
+---
+- name: Configure Linux observability
+  hosts: lab_linux
+  gather_facts: true
+  become: true
+
+  roles:
+    - node_exporter
