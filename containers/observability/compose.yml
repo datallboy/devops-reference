@@ -1,0 +1,90 @@
+services:
+  prometheus:
+    image: docker.io/prom/prometheus:${PROMETHEUS_VERSION}
+    container_name: lab-prometheus
+    restart: unless-stopped
+
+    network_mode: host
+
+    dns:
+      - "${LAB_DNS}"
+
+    dns_search:
+      - "${LAB_DOMAIN}"
+
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME:-30d}
+      - --storage.tsdb.retention.size=${PROMETHEUS_RETENTION_SIZE:-5GB}
+      - --web.listen-address=${LAB_GATEWAY}:9090
+
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+
+  loki:
+    image: docker.io/grafana/loki:${LOKI_VERSION}
+    container_name: lab-loki
+    restart: unless-stopped
+
+    network_mode: host
+
+    environment:
+      LOKI_RETENTION_PERIOD: "${LOKI_RETENTION_PERIOD:-168h}"
+
+    command:
+      - -config.file=/etc/loki/config.yml
+      - -config.expand-env=true
+      - -server.http-listen-address=${LAB_GATEWAY}
+      - -server.http-listen-port=${LOKI_PORT:-3100}
+
+    volumes:
+      - ./loki/config.yml:/etc/loki/config.yml:ro
+      - loki-data:/loki
+
+  grafana:
+    image: docker.io/grafana/grafana:${GRAFANA_VERSION}
+    container_name: lab-grafana
+    restart: unless-stopped
+
+    ports:
+      - "${GRAFANA_BIND_IP:-127.0.0.1}:${GRAFANA_PORT:-3000}:3000"
+
+    depends_on:
+      - prometheus
+      - loki
+
+    environment:
+      GF_SERVER_HTTP_ADDR: "0.0.0.0"
+      GF_SERVER_HTTP_PORT: "3000"
+
+      GF_SECURITY_ADMIN_USER: "${GRAFANA_ADMIN_USER:-admin}"
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_SECURITY_SECRET_KEY__FILE: /run/secrets/grafana_secret_key
+
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+
+      PROMETHEUS_URL: "http://${LAB_GATEWAY}:${PROMETHEUS_PORT:-9090}"
+      LOKI_URL: "http://${LAB_GATEWAY}:${LOKI_PORT:-3100}"
+
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+
+    secrets:
+      - grafana_admin_password
+      - grafana_secret_key
+
+secrets:
+  grafana_admin_password:
+    file: ./secrets/grafana_admin_password
+
+  grafana_secret_key:
+    file: ./secrets/grafana_secret_key
+
+volumes:
+  prometheus-data:
+  loki-data:
+  grafana-data:
