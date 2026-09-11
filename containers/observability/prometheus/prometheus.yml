@@ -13,3 +13,10 @@ scrape_configs:
       - targets:
           - lab-debian01:9100
           - lab-rocky01:9100
+
+    relabel_configs:
+      - source_labels:
+          - __address__
+        regex: '([^:]+):.*'
+        target_label: host
+        replacement: '$1'
