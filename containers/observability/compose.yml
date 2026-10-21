@@ -21,6 +21,7 @@ services:
 
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
       - prometheus-data:/prometheus
 
   loki:
@@ -78,6 +79,23 @@ services:
       - grafana_admin_password
       - grafana_secret_key
 
+  alertmanager:
+    image: docker.io/prom/alertmanager:${ALERTMANAGER_VERSION}
+    container_name: lab-alertmanager
+    restart: unless-stopped
+
+    network_mode: host
+
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+      - --web.listen-address=127.0.0.1:9093
+      - --enable-feature=utf8-strict-mode
+
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+
 secrets:
   grafana_admin_password:
     file: ./secrets/grafana_admin_password
@@ -89,3 +107,4 @@ volumes:
   prometheus-data:
   loki-data:
   grafana-data:
+  alertmanager-data:
