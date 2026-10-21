@@ -1,0 +1,13 @@
+groups:
+  - name: linux_nodes
+    rules:
+      - alert: LinuxNodeDown
+        expr: up{job="linux_nodes"} == 0
+        for: 2m
+
+        labels:
+          severity: critical
+
+        annotations:
+          summary: "Linux node {{ $labels.host }} is down"
+          description: "Prometheus has been unable to scrape {{ $labels.host }} for more than 2 minutes."
