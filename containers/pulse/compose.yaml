@@ -1,0 +1,17 @@
+services:
+  pulse:
+    image: ${PULSE_IMAGE:-rcourtman/pulse:6.5.0}
+    container_name: lab-pulse
+    restart: unless-stopped
+
+    ports:
+      - "${PULSE_BIND_IP:-127.0.0.1}:${PULSE_PORT:-7655}:7655"
+
+    environment:
+      PULSE_DEPLOYMENT_METHOD: docker_compose
+
+    volumes:
+      - pulse-data:/data
+
+volumes:
+  pulse-data:
